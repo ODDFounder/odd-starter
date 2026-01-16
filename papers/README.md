@@ -64,8 +64,9 @@ AI 代码生成能力在 2023-2025 年发生了质的飞跃，产生了前所未
 
 **文件**：
 - 📄 [Markdown 版](whitepaper/ODD_Strategic_Whitepaper.md)
-- 📊 [PDF 幻灯片](whitepaper/ODD_Strategic_Whitepaper.pdf)
-- 📊 [中文 PDF 幻灯片](whitepaper/ODD_Strategic_Whitepaper_CN.pdf)
+- 📊 [PDF 幻灯片 (中文)](whitepaper/ODD_Strategic_Whitepaper_CN.pdf)
+- 📊 [PDF Slides (English)](whitepaper/ODD_Strategic_Whitepaper_EN.pdf)
+- 📄 [Markdown (English)](whitepaper/ODD_Strategic_Whitepaper_EN.md)
 
 **核心标语**：
 
