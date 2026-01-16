@@ -1,0 +1,244 @@
+{
+  "seal_id": "961afd7e-fe9d-4961-9ddc-ebef7abfd806",
+  "timestamp": "2026-01-16T15:21:46.768454",
+  "odd_version": "0.1.0",
+  "hashes": {
+    "requirement": "65b652dd54bcbaf798409d3597ff99fac61c9461fbc039d8591fb5fa5bc99494",
+    "contract": "25ee654fcbac91f70bc36edf0220deaa24c0f91a6140d8e54bc70041fb7d41b7",
+    "code": "04abeb303de319c3f8ff6c5a724c3fc22cce588ca540e50618c047ad90a3b2fd",
+    "verification": "3c439d35cb6d68136e67eb133569f5ceb6b57dda41ee302c278ed356fa0bd713"
+  },
+  "artifacts": {
+    "requirement": "创建一个用户登录API",
+    "contract": {
+      "contract_id": "45335210-2e1f-407e-90d1-288006fc0ac2",
+      "timestamp": "2026-01-16T15:20:04.307002",
+      "requirement_original": "创建一个用户登录API",
+      "artifact_type": "auth_login",
+      "artifact_name": "用户登录API",
+      "contract": {
+        "implicit_requirements": [
+          {
+            "id": "IR001",
+            "name": "密码不可明文存储",
+            "description": "密码必须经过哈希处理后存储，禁止明文",
+            "severity": "critical"
+          },
+          {
+            "id": "IR002",
+            "name": "密码传输加密",
+            "description": "密码在传输过程中必须加密（HTTPS/TLS）",
+            "severity": "critical"
+          },
+          {
+            "id": "IR003",
+            "name": "登录失败限制",
+            "description": "应限制连续登录失败次数，防止暴力破解",
+            "severity": "high"
+          },
+          {
+            "id": "IR004",
+            "name": "会话令牌安全",
+            "description": "生成的token必须具有足够熵值，不可预测",
+            "severity": "critical"
+          },
+          {
+            "id": "IR005",
+            "name": "敏感信息不入日志",
+            "description": "密码、token等敏感信息禁止写入日志",
+            "severity": "critical"
+          }
+        ],
+        "common_knowledge": {
+          "password": {
+            "min_length": 8,
+            "max_length": 128,
+            "require_uppercase": true,
+            "require_lowercase": true,
+            "require_digit": true,
+            "require_special": false,
+            "hash_algorithm": "bcrypt",
+            "bcrypt_rounds": 12
+          },
+          "token": {
+            "type": "JWT",
+            "algorithm": "HS256",
+            "expiry_hours": 24,
+            "refresh_enabled": true
+          },
+          "rate_limit": {
+            "max_attempts": 5,
+            "lockout_minutes": 15
+          },
+          "username": {
+            "min_length": 3,
+            "max_length": 50,
+            "allow_email": true
+          }
+        },
+        "inputs": [
+          {
+            "name": "username",
+            "type": "string",
+            "required": true,
+            "validation": "length >= 3"
+          },
+          {
+            "name": "password",
+            "type": "string",
+            "required": true,
+            "sensitive": true,
+            "validation": "length >= 8"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "success",
+            "type": "boolean"
+          },
+          {
+            "name": "token",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "user_id",
+            "type": "integer",
+            "nullable": true
+          },
+          {
+            "name": "expires_at",
+            "type": "datetime",
+            "nullable": true
+          },
+          {
+            "name": "error_message",
+            "type": "string",
+            "nullable": true
+          }
+        ],
+        "generation_hints": [
+          "使用 bcrypt 或 hashlib.pbkdf2_hmac 进行密码哈希",
+          "使用 PyJWT 生成 JWT token",
+          "包含输入参数验证",
+          "返回结构化的响应对象",
+          "添加适当的异常处理"
+        ],
+        "verification_hints": {
+          "must_contain_any": [
+            {
+              "patterns": [
+                "bcrypt",
+                "argon2",
+                "hashlib",
+                "pbkdf2"
+              ],
+              "reason": "必须使用密码哈希函数",
+              "severity": "critical"
+            },
+            {
+              "patterns": [
+                "jwt",
+                "JWT",
+                "token",
+                "session"
+              ],
+              "reason": "必须生成会话令牌",
+              "severity": "high"
+            }
+          ],
+          "must_not_contain": [
+            {
+              "patterns": [
+                "password =",
+                "password=",
+                "pwd ="
+              ],
+              "reason": "禁止明文存储密码",
+              "severity": "critical"
+            },
+            {
+              "patterns": [
+                "print(password",
+                "log(password",
+                "logger.info(password"
+              ],
+              "reason": "禁止日志输出密码",
+              "severity": "critical"
+            }
+          ],
+          "should_contain": [
+            {
+              "patterns": [
+                "try:",
+                "except:",
+                "raise"
+              ],
+              "reason": "应包含异常处理",
+              "severity": "medium"
+            },
+            {
+              "patterns": [
+                "validate",
+                "check",
+                "verify"
+              ],
+              "reason": "应包含输入验证",
+              "severity": "medium"
+            }
+          ]
+        }
+      }
+    },
+    "code": "from flask import Flask, request, jsonify\nfrom flask_bcrypt import Bcrypt\nfrom flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity\nfrom flask_jwt_extended.exceptions import JWTExtendedException\nfrom flask_limiter import Limiter\nfrom flask_limiter.util import get_remote_address\nfrom datetime import datetime, timedelta\nimport logging\nimport re\n\napp = Flask(__name__)\napp.config['SECRET_KEY'] = 'secret_key_here'\napp.config['JWT_SECRET_KEY'] = 'jwt_secret_key_here'\napp.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)\n\nbcrypt = Bcrypt(app)\njwt = JWTManager(app)\nlimiter = Limiter(app, key_func=get_remote_address)\n\n# 日志配置\nlogging.basicConfig(level=logging.INFO)\nlogger = logging.getLogger(__name__)\n\n# 用户数据存储（示例）\nusers = {}\n\n# 密码参数\npassword_params = {\n    'min_length': 8,\n    'max_length': 128,\n    'require_uppercase': True,\n    'require_lowercase': True,\n    'require_digit': True,\n    'require_special': False,\n    'hash_algorithm': 'bcrypt',\n    'bcrypt_rounds': 12\n}\n\n# 令牌参数\ntoken_params = {\n    'type': 'JWT',\n    'algorithm': 'HS256',\n    'expiry_hours': 24,\n    'refresh_enabled': True\n}\n\n# 限速参数\nrate_limit_params = {\n    'max_attempts': 5,\n    'lockout_minutes': 15\n}\n\n# 用户名参数\nusername_params = {\n    'min_length': 3,\n    'max_length': 50,\n    'allow_email': True\n}\n\n# 输入参数验证\ndef validate_input(data):\n    if 'username' not in data or 'password' not in data:\n        return False, '缺少必要参数'\n    if not re.match(r'^[a-zA-Z0-9_]+$', data['username']):\n        return False, '用户名格式不正确'\n    if len(data['username']) < username_params['min_length'] or len(data['username']) > username_params['max_length']:\n        return False, '用户名长度不正确'\n    if len(data['password']) < password_params['min_length'] or len(data['password']) > password_params['max_length']:\n        return False, '密码长度不正确'\n    if not re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).*$', data['password']):\n        return False, '密码格式不正确'\n    return True, ''\n\n# 登录失败限制\ndef rate_limit_exceeded(ip_address):\n    # 限制登录失败次数（示例）\n    if ip_address in users and users[ip_address]['failed_attempts'] >= rate_limit_params['max_attempts']:\n        return True\n    return False\n\n# 登录失败处理\ndef handle_login_failure(ip_address):\n    # 处理登录失败（示例）\n    if ip_address in users:\n        users[ip_address]['failed_attempts'] += 1\n    else:\n        users[ip_address] = {'failed_attempts': 1, 'lockout_time': datetime.now() + timedelta(minutes=rate_limit_params['lockout_minutes'])}\n\n# 登录成功处理\ndef handle_login_success(ip_address):\n    # 处理登录成功（示例）\n    if ip_address in users:\n        del users[ip_address]\n\n@app.route('/auth/login', methods=['POST'])\n@limiter.limit(\"10/minute\")\ndef login():\n    try:\n        data = request.get_json()\n        valid, error_message = validate_input(data)\n        if not valid:\n            return jsonify({'success': False, 'error_message': error_message}), 400\n        ip_address = request.remote_addr\n        if rate_limit_exceeded(ip_address):\n            return jsonify({'success': False, 'error_message': '登录失败次数过多，已被锁定'}), 429\n        user_id = data['username']\n        password = data['password']\n        # 密码哈希处理\n        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')\n        # 用户数据存储（示例）\n        if user_id in users:\n            if bcrypt.check_password_hash(users[user_id]['password'], password):\n                # 生成JWT令牌\n                access_token = create_access_token(identity=user_id)\n                expires_at = datetime.utcnow() + timedelta(hours=token_params['expiry_hours'])\n                return jsonify({'success': True, 'token': access_token, 'user_id': user_id, 'expires_at': expires_at.isoformat()}), 200\n            else:\n                handle_login_failure(ip_address)\n                return jsonify({'success': False, 'error_message': '用户名或密码不正确'}), 401\n        else:\n            handle_login_failure(ip_address)\n            return jsonify({'success': False, 'error_message': '用户名或密码不正确'}), 401\n    except JWTExtendedException as e:\n        return jsonify({'success': False, 'error_message': str(e)}), 401\n    except Exception as e:\n        logger.error(str(e))\n        return jsonify({'success': False, 'error_message': '内部错误'}), 500\n\nif __name__ == '__main__':\n    app.run(debug=True)\n",
+    "verification": {
+      "passed": false,
+      "critical_failed": true,
+      "checks": [
+        {
+          "type": "must_contain_any",
+          "rule": "必须使用密码哈希函数",
+          "severity": "critical",
+          "passed": true,
+          "found": "bcrypt"
+        },
+        {
+          "type": "must_contain_any",
+          "rule": "必须生成会话令牌",
+          "severity": "high",
+          "passed": true,
+          "found": "jwt"
+        },
+        {
+          "type": "must_not_contain",
+          "rule": "禁止明文存储密码",
+          "severity": "critical",
+          "passed": false,
+          "found": "password ="
+        },
+        {
+          "type": "must_not_contain",
+          "rule": "禁止日志输出密码",
+          "severity": "critical",
+          "passed": true,
+          "found": null
+        },
+        {
+          "type": "should_contain",
+          "rule": "应包含异常处理",
+          "severity": "low",
+          "passed": true,
+          "found": "try:"
+        },
+        {
+          "type": "should_contain",
+          "rule": "应包含输入验证",
+          "severity": "low",
+          "passed": true,
+          "found": "validate"
+        }
+      ]
+    }
+  },
+  "integrity": "86c58aeb4088245ed5788a30beb827e5c49698f0248751a7fc3bab82d141dd5e"
+}

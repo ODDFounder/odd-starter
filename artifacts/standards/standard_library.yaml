@@ -1,0 +1,329 @@
+# ODD 产出物标准库 (Artifact Standard Library)
+# 版本: 1.0.0
+# 用途: 定义各类产出物的隐式需求、常识参数和验证规则
+
+version: "1.0.0"
+description: "ODD Demo 产出物标准库"
+
+# ============================================================
+# 产出物类型定义
+# ============================================================
+
+artifacts:
+
+  # ----------------------------------------------------------
+  # 用户登录 API
+  # ----------------------------------------------------------
+  auth_login:
+    name: "用户登录API"
+    description: "标准用户认证登录接口，接收凭证并返回会话令牌"
+    
+    # 触发关键词 (用于需求匹配)
+    keywords:
+      - "登录"
+      - "login"
+      - "认证"
+      - "auth"
+      - "sign in"
+      - "用户验证"
+
+    # 隐式需求：用户不会明说，但必须满足的安全/工程要求
+    implicit_requirements:
+      - id: IR001
+        name: "密码不可明文存储"
+        description: "密码必须经过哈希处理后存储，禁止明文"
+        severity: critical
+        
+      - id: IR002
+        name: "密码传输加密"
+        description: "密码在传输过程中必须加密（HTTPS/TLS）"
+        severity: critical
+        
+      - id: IR003
+        name: "登录失败限制"
+        description: "应限制连续登录失败次数，防止暴力破解"
+        severity: high
+        
+      - id: IR004
+        name: "会话令牌安全"
+        description: "生成的token必须具有足够熵值，不可预测"
+        severity: critical
+        
+      - id: IR005
+        name: "敏感信息不入日志"
+        description: "密码、token等敏感信息禁止写入日志"
+        severity: critical
+
+    # 常识参数：行业通用的默认配置
+    common_knowledge:
+      password:
+        min_length: 8
+        max_length: 128
+        require_uppercase: true
+        require_lowercase: true
+        require_digit: true
+        require_special: false
+        hash_algorithm: "bcrypt"
+        bcrypt_rounds: 12
+        
+      token:
+        type: "JWT"
+        algorithm: "HS256"
+        expiry_hours: 24
+        refresh_enabled: true
+        
+      rate_limit:
+        max_attempts: 5
+        lockout_minutes: 15
+        
+      username:
+        min_length: 3
+        max_length: 50
+        allow_email: true
+
+    # 契约模板
+    contract_template:
+      inputs:
+        - name: username
+          type: string
+          required: true
+          validation: "length >= 3"
+        - name: password
+          type: string
+          required: true
+          sensitive: true
+          validation: "length >= 8"
+          
+      outputs:
+        - name: success
+          type: boolean
+        - name: token
+          type: string
+          nullable: true
+        - name: user_id
+          type: integer
+          nullable: true
+        - name: expires_at
+          type: datetime
+          nullable: true
+        - name: error_message
+          type: string
+          nullable: true
+
+    # 验证提示：用于检查生成代码是否符合要求
+    verification_hints:
+      must_contain_any:
+        - patterns: ["bcrypt", "argon2", "hashlib", "pbkdf2"]
+          reason: "必须使用密码哈希函数"
+          severity: critical
+          
+        - patterns: ["jwt", "JWT", "token", "session"]
+          reason: "必须生成会话令牌"
+          severity: high
+
+      must_not_contain:
+        - patterns: ["password =", "password=", "pwd ="]
+          reason: "禁止明文存储密码"
+          severity: critical
+          
+        - patterns: ["print(password", "log(password", "logger.info(password"]
+          reason: "禁止日志输出密码"
+          severity: critical
+
+      should_contain:
+        - patterns: ["try:", "except:", "raise"]
+          reason: "应包含异常处理"
+          severity: medium
+          
+        - patterns: ["validate", "check", "verify"]
+          reason: "应包含输入验证"
+          severity: medium
+
+    # 代码生成提示
+    generation_hints:
+      - "使用 bcrypt 或 hashlib.pbkdf2_hmac 进行密码哈希"
+      - "使用 PyJWT 生成 JWT token"
+      - "包含输入参数验证"
+      - "返回结构化的响应对象"
+      - "添加适当的异常处理"
+
+
+  # ----------------------------------------------------------
+  # CRUD API (增删改查)
+  # ----------------------------------------------------------
+  crud_api:
+    name: "CRUD API"
+    description: "标准增删改查接口，支持对资源的基本操作"
+    
+    keywords:
+      - "crud"
+      - "增删改查"
+      - "create"
+      - "read"
+      - "update"
+      - "delete"
+      - "资源管理"
+      - "数据操作"
+
+    implicit_requirements:
+      - id: IR101
+        name: "输入验证"
+        description: "所有输入必须经过验证和清洗，防止注入攻击"
+        severity: critical
+        
+      - id: IR102
+        name: "权限检查"
+        description: "操作前应验证用户是否有权限访问该资源"
+        severity: high
+        
+      - id: IR103
+        name: "SQL注入防护"
+        description: "使用参数化查询，禁止字符串拼接SQL"
+        severity: critical
+        
+      - id: IR104
+        name: "幂等性保证"
+        description: "PUT/DELETE操作应保证幂等性"
+        severity: medium
+        
+      - id: IR105
+        name: "软删除优先"
+        description: "删除操作优先使用软删除（标记删除）"
+        severity: low
+
+    common_knowledge:
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+        page_param: "page"
+        size_param: "page_size"
+        
+      response_format:
+        success_code: 200
+        created_code: 201
+        no_content_code: 204
+        bad_request_code: 400
+        not_found_code: 404
+        
+      naming:
+        id_field: "id"
+        created_at_field: "created_at"
+        updated_at_field: "updated_at"
+        deleted_at_field: "deleted_at"
+        
+      validation:
+        max_string_length: 255
+        max_text_length: 65535
+
+    contract_template:
+      operations:
+        create:
+          method: POST
+          inputs:
+            - name: data
+              type: object
+              required: true
+          outputs:
+            - name: id
+              type: integer
+            - name: created_at
+              type: datetime
+              
+        read:
+          method: GET
+          inputs:
+            - name: id
+              type: integer
+              required: true
+          outputs:
+            - name: data
+              type: object
+              
+        update:
+          method: PUT
+          inputs:
+            - name: id
+              type: integer
+              required: true
+            - name: data
+              type: object
+              required: true
+          outputs:
+            - name: updated_at
+              type: datetime
+              
+        delete:
+          method: DELETE
+          inputs:
+            - name: id
+              type: integer
+              required: true
+          outputs:
+            - name: success
+              type: boolean
+              
+        list:
+          method: GET
+          inputs:
+            - name: page
+              type: integer
+              default: 1
+            - name: page_size
+              type: integer
+              default: 20
+            - name: filters
+              type: object
+              required: false
+          outputs:
+            - name: items
+              type: array
+            - name: total
+              type: integer
+            - name: page
+              type: integer
+            - name: page_size
+              type: integer
+
+    verification_hints:
+      must_contain_any:
+        - patterns: ["def create", "def add", "def insert", "async def create"]
+          reason: "必须包含创建操作"
+          severity: high
+          
+        - patterns: ["def get", "def read", "def find", "async def get"]
+          reason: "必须包含读取操作"
+          severity: high
+          
+        - patterns: ["def update", "def modify", "async def update"]
+          reason: "必须包含更新操作"
+          severity: high
+          
+        - patterns: ["def delete", "def remove", "async def delete"]
+          reason: "必须包含删除操作"
+          severity: high
+
+      must_not_contain:
+        - patterns: ["f\"SELECT", "f'SELECT", "+ query", "query +"]
+          reason: "禁止SQL字符串拼接"
+          severity: critical
+          
+        - patterns: ["eval(", "exec("]
+          reason: "禁止动态代码执行"
+          severity: critical
+
+      should_contain:
+        - patterns: ["try:", "except:"]
+          reason: "应包含异常处理"
+          severity: medium
+          
+        - patterns: ["page", "limit", "offset"]
+          reason: "应支持分页"
+          severity: medium
+
+    generation_hints:
+      - "使用参数化查询防止SQL注入"
+      - "实现分页功能，默认每页20条"
+      - "包含输入验证"
+      - "返回标准HTTP状态码"
+      - "使用软删除（设置deleted_at字段）"
+      - "添加created_at和updated_at时间戳"

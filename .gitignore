@@ -1,0 +1,35 @@
+# .gitattributes
+
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Python
+*.py text eol=lf
+
+# YAML
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# JSON
+*.json text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Batch files
+*.bat text eol=crlf
+
+# No LF conversion for binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pkl binary
+*.pyc binary
+
+# Exclude sensitive files
+.env export-ignore
