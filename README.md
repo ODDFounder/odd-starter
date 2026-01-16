@@ -105,7 +105,23 @@ ODD 模式：
 
 ---
 
-## 📁 项目结构
+## 📚 资源 | Resources
+
+### 📖 论文与白皮书 | Papers & Whitepapers
+
+- 📕 [学术论文 v7.1](papers/academic/) — Zenodo DOI: [10.5281/zenodo.18207648](https://doi.org/10.5281/zenodo.18207648)
+- 📄 [战略白皮书](papers/whitepaper/) — ODD: 释放 AI 速度，减少工程风险
+- 🔬 [5D Context Model](papers/academic/5D_Context_Model.md) — 理论基础
+
+### 📖 文档 | Documentation
+
+| 文档 | 适合人群 | 主题 |
+|------|----------|------|
+| [开发者版](docs/demo-explained-for-developers_CN.md) | 工程师 | 从"写代码"到"定契约"的角色升级 |
+| [管理者版](docs/demo-explained-for-managers_CN.md) | 技术管理者 | 如何在 AI 时代控制质量与风险 |
+| [决策者版](docs/demo-explained-for-executives_CN.md) | CTO/VP | 速度与安全的零和博弈已被打破 |
+
+[English Versions Available](docs/) | 英文版可用
 
 ```
 odd-starter/
